@@ -1,301 +1,77 @@
-﻿<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<title>评论功能</title>
-<link href="style/weibo.css" rel="stylesheet" />
-<script src="js/jquery-3.1.1.js"></script>
-<script src="dist/template-native.js"></script>
-<script id="nj" type="text/html">
-    <p class="replyContent"><%=content%></p>
-    <p class="operation">
-        <span class="replyTime"><%=time%></span>
-        <span class="handle">
-            <a href="javascript:;" class="top"><%=acc%></a>
-            <a href="javascript:;" class="down_icon"><%=ref%></a>
-            <a href="javascript:;" class="cut">删除</a>
-        </span>
-    </p>
-</script>
-<script>
-    $(function () {
-        // 输入框
-        var oText = $("#tijiaoText");
-        // 发送按钮
-        var oBtn  = $("#btn_send");
-        // 消息列表
-        var oMsgList = $("#messList");
-        // 页码
-        var oPage = $("#page");
-        // 根地址
-        var baseURL = "weibo.php";
-
-        // 1.监听提交按钮点击
-        /*
-         weibo.php?act=add&content=xxx	添加一条
-         返回：{error:0, id: 新添加内容的ID, time: 添加时间}
-               {error:0, id: 41, time: 1491374624}
-        */
-        oBtn.click(function () {
-            // 2.获取用户输入的内容
-            var text = oText.val();
-            // 3.把微博数据发送到服务器
-            $.ajax({
-                "type":"get",
-                "url":baseURL,
-                "data":"act=add&content="+text,
-                "success": function (result) {
-                    // 1.清除用户输入内容
-                    oText.val("");
-                    // 2.将返回值转化为JS对象
-                    // 注意点: 如果通过eval来将字符串转换为JS对象, 那么必须在前后加上()
-                    // ({error:0, id: 41, time: 1491374624})
-                    var obj = eval('('+result+')');
-                    obj.content = text;
-
-                    // 3.创建一条微博
-                    var div = createEle(obj);
-
-                    // 4.判断当前一共有几条微博
-                    if(oMsgList.children().length >= 6){
-                        // 拿到最前面的一条微博,// 删除最前面一条微博
-                        oMsgList.children().last().remove();
-                    }
-
-                    // 4.添加微博
-                    if(oMsgList.children().length == 0){
-                        // 如果没有直接追加
-                        oMsgList.append(div);
-                    }else{
-                        // 如果有了添加到前面
-                        oMsgList.prepend(div);
-                    }
-
-                    // 5.重新获取页码
-                    getPage();
-                },
-                "error": function (code) {
-                    console.log(code);
-                }
-            });
-        });
-
-        // 2.获取默认微博数据
-        /*
-         weibo.php?act=get&page=1		获取一页数据
-         返回：[{id: ID, content: "内容", time: 时间戳, acc: 顶次数, ref: 踩次数}, {...}, ...]
-        */
-        function getMsg(number) {
-            $.ajax({
-                "type": "get",
-                "url": baseURL,
-                "data": "act=get&page="+number,
-                "success": function (result) {
-                    var arr = eval(result);
-                    // 清空以前的数据
-                    oMsgList.html("");
-                    $.each(arr, function (key,value) {
-                        var div = createEle(value);
-                        oMsgList.append(div);
-                    });
-                },
-                "error": function (code) {
-                    console.log(code);
-
-                }
-            });
-        }
-        getMsg(1);
-
-        // 3.获取页码
-        /*
-         weibo.php?act=get_page_count	获取页数
-         返回：{count:页数}
-        */
-        function getPage() {
-            $.ajax({
-                "type": "get",
-                "url": baseURL,
-                "data": "act=get_page_count",
-                "success": function (result) {
-                    var obj = eval('('+result+')');
-                    oPage.html("");
-                    for(var i = 0, len = obj.count; i < len; i++){
-                        var page = $('<a href="javascript:;">'+(i+1)+'</a>');
-                        addPageClickEvent(page);
-                        oPage.append(page);
-                    }
-                    oPage.children().first().addClass("active");
-                },
-                "error": function (code) {
-                    console.log(code);
-
-                }
-            });
-        }
-        getPage();
-
-        // 给页码添加监听事件
-        function addPageClickEvent(page) {
-            page.click(function () {
-                // 切换页码选中状态
-                $(this).addClass("active").siblings().removeClass("active");
-                // 获取对应页码数据
-                getMsg($(this).text());
-            });
-        }
-        // 添加顶监听事件
-        /*
-         weibo.php?act=acc&id=12			顶某一条数据
-         返回：{error:0}
-        */
-        function addTopClickEvnet(dom, obj) {
-            dom.click(function () {
-                $.ajax({
-                    "type": "get",
-                    "url": baseURL,
-                    "data": "act=acc&id="+obj.id,
-                    "success": function (result) {
-                        dom.text(parseInt(dom.text()) + 1);
-                    },
-                    "error": function (code) {
-                        console.log(code);
-
-                    }
-                });
-            });
-        }
-        // 添加踩监听事件
-        /*
-         weibo.php?act=ref&id=12			踩某一条数据
-         返回：{error:0}
-        */
-        function addDownClickEvnet(dom, obj) {
-            dom.click(function () {
-                $.ajax({
-                    "type": "get",
-                    "url": baseURL,
-                    "data": "act=ref&id="+obj.id,
-                    "success": function (result) {
-                        dom.text(parseInt(dom.text()) + 1);
-                    },
-                    "error": function (code) {
-                        console.log(code);
-                    }
-                });
-            });
-        }
-        // 添加删除监听事件
-        /*
-         weibo.php?act=del&id=12			删除一条数据
-         返回：{error:0}
-        */
-        function addDelClickEvnet(dom, obj) {
-            dom.click(function () {
-                $.ajax({
-                    "type": "get",
-                    "url": baseURL,
-                    "data": "act=del&id="+obj.id,
-                    "success": function (result) {
-                        getMsg();
-                        getPage();
-                    },
-                    "error": function (code) {
-                        console.log(code);
-
-                    }
-                });
-            });
-        }
-        // 时间处理工具类
-        function dateFormatter(time) {
-            var date = new Date(time * 1000);
-            /*
-            var year = date.getFullYear();
-            var month = date.getMonth() + 1;
-            var day = date.getDate();
-            var hours = date.getHours();
-            var minutes = date.getMinutes();
-            var seconds = date.getSeconds();
-            return year+"-"+month+"-"+day+" "+hours+":"+minutes+":"+seconds;
-            */
-            var arr = [];
-            arr.push(date.getFullYear()+"-");
-            arr.push(date.getMonth()+1+"-");
-            arr.push(date.getDate()+" ");
-            arr.push(date.getHours()+":");
-            arr.push(date.getMinutes()+":");
-            arr.push(date.getSeconds());
-            return arr.join("");
-        }
-        // 创建微博工具类
-        function createEle(obj) {
-            // 创建每条微博容器
-            var div = $("<div></div>");
-            // 设置每条微博样式
-            div.addClass("reply");
-            // 填充微博内容
-            /*
-            var temp ='<p class="replyContent">'+obj.content+'</p>'+
-                '<p class="operation">'+
-                    '<span class="replyTime">'+dateFormatter(obj.time)+'</span>'+
-                    '<span class="handle">'+
-                    '<a href="javascript:;" class="top">0</a>'+
-                    '<a href="javascript:;" class="down">0</a>'+
-                    '<a href="javascript:;" class="del">删除</a>'+
-                    '</span>'+
-                '</p>';
-            */
-            obj.time = dateFormatter(obj.time);
-            var temp = template("nj", obj);
-            // 给微博写入内容
-            div.html(temp);
-            // 获取顶/踩/删除
-            addTopClickEvnet(div.find(".top"), obj);
-            addDownClickEvnet(div.find(".down_icon"), obj);
-            addDelClickEvnet(div.find(".cut"), obj);
-
-            // 返回创建好的一条微博
-            return div;
-        }
-    });
-</script>
+    <meta charset="UTF-8">
+    <title>留言评论功能</title>
+    <link rel="stylesheet" href="css/base.css"/>
+    <link rel="stylesheet" href="css/jquery.datetimepicker.css"/>
+    <link rel="stylesheet" href="css/添加任务.css"/>
 </head>
-
 <body>
-<div class="xmgArea">
-<!--留言-->
-     <div class="takeComment">
-        <textarea name="textarea" class="takeTextField" id="tijiaoText"></textarea>
-        <div class="takeSbmComment">
-            <input id="btn_send" type="button" class="inputs" value="" />
-            <span>(可按 Enter 回复)</span>
-        </div>
-    </div>
-<!--已留-->
-    <div class="commentOn">
-        <div class="noContent">暂无留言</div>
-        <div id="messList" class="messList">
-        	<!--<div class="reply">
-                <p class="replyContent">卫士，新款卫士将推出总共14种车身式样。其中， XS旅行款车型售价为32295英镑(约33.6万元)。</p>
-                <p class="operation">
-                    <span class="replyTime">2011-09-08 16:37:60</span>
-                    <span class="handle">
-                    	<a href="javascript:;" class="top">0</a>
-                        <a href="javascript:;" class="down_icon">0</a>
-                        <a href="javascript:;" class="cut">删除</a>
-                    </span>
-                </p>
-            </div>-->
-        </div>
-        <div id="page" class="page">
-            <!--
-        	<a href="javascript:;" class="active">1</a>
-        	<a href="javascript:;">2</a>
-        	<a href="javascript:;">3</a>
-            -->
-        </div>
-    </div>
+
+
+
+
+
+<div id="logo">
+    <!--<img src="images/rabbit.jpg" alt=""/>-->
 </div>
+
+<div id="header">
+
+    <div id="box">
+        <div id="leftPic">
+            <!--<img src="images/logo.png" alt=""/>-->
+        </div>
+
+        <input type="text"/>
+        <button id="btn">发布</button>
+    </div>
+
+</div>
+
+
+<div id="content">
+
+    <div id="rocket">
+        <img src="images/Top.jpg" alt=""/>
+    </div>
+
+    <div id="nav">
+        <span id="UnFin" class="cur">待完成</span>
+        <span id="Fin">已完成</span>
+    </div>
+
+    <ul id="task">
+     <!--       <li>
+        <input type="checkbox"/>
+        <span id="title">2212</span>
+        <span id="details">341313</span>
+        <span id="del">341313</span>
+    </li>-->
+    </ul>
+
+
+    <ul id="finish_task">
+
+    </ul>
+
+</div>
+
+<div id="someContent">
+    <span id="close">关闭</span>
+    <span id="oSpan">更新成功</span>
+    <div id="conTitle"></div>
+    <textarea name="" id="" cols="30" rows="10"></textarea>
+    <input type="text" id="time"/>
+    <button>更新</button>
+</div>
+
+<video src="4188.mp3"></video>
+
 </body>
+<script src="js/jquery-3.1.1.js"></script>
+<script src="js/jquery.datetimepicker.full.js"></script>
+<script src="js/store.min.js"></script>
+<script src="js/添加任务2.js"></script>
 </html>
